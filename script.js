@@ -472,12 +472,20 @@ async function submitVote(reviewId,newVote,netVoteEl,upBtn,downBtn){
 // Initialize Page
 // ------------------------
 window.addEventListener("DOMContentLoaded", async ()=>{
-  await protectPage();
-  await loadProfessors();
-  await loadNavbarUser();
-  await loadTopProfessors();
-  submitBtn.addEventListener("click", submitReviewHandler);
-  sortSelect.addEventListener("change", ()=>{if(selectedProfId) loadReviews(selectedProfId,sortSelect.value);});
+  const professorSearch = document.getElementById("professorSearch");
+  const professorList = document.getElementById("professorList");
+  const ratingSection = document.getElementById("ratingSection");
+  const profName = document.getElementById("profName");
+  const reviewsDiv = document.getElementById("reviews");
+  const ratingInput = document.getElementById("rating");
+  const commentInput = document.getElementById("comment");
+  const courseInput = document.getElementById("course");
+  const wouldTakeAgainSelect = document.getElementById("wouldTakeAgain");
+  const submitBtn = document.getElementById("submitRating");
+  const sortSelect = document.getElementById("sortReviews");
+
+  let selectedProfId = null;
+  // attach event listeners and call initial functions here
 });
 
 
@@ -491,7 +499,9 @@ window.addEventListener("DOMContentLoaded", async ()=>{
 
 
 
+
   
+
 
 
 
