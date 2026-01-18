@@ -481,15 +481,13 @@ downBtn.addEventListener("click", async () => {
 // ------------------------
 // Edit Review
 // ------------------------
-async function editReview(review) {
+async function editReview(review, profId) {
   ratingInput.value = review.rating || "";
   commentInput.value = review.comment || "";
   courseInput.value = review.course || "";
   wouldTakeAgainSelect.value =
     review.would_take_again === true ? "true" :
     review.would_take_again === false ? "false" : "";
-
-
 
   submitBtn.textContent = "Update Review";
 
@@ -518,21 +516,25 @@ async function editReview(review) {
 
     if (error) return alert("Failed to update review: " + error.message);
 
+    // Reset form
     ratingInput.value = "";
     commentInput.value = "";
     courseInput.value = "";
     wouldTakeAgainSelect.value = "";
     submitBtn.textContent = "Submit Review";
 
+    // Remove edit handler and restore submit handler
     submitBtn.removeEventListener("click", updateHandler);
     submitBtn.addEventListener("click", submitReviewHandler);
 
-    await loadReviews(profId);
+    // 🔹 Reload reviews immediately
+    await loadReviews(profId); // Make sure profId is passed to editReview
   };
 
   submitBtn.removeEventListener("click", submitReviewHandler);
   submitBtn.addEventListener("click", updateHandler);
 }
+
 
 // ------------------------
 // Delete Review
@@ -643,3 +645,4 @@ sortSelect.addEventListener("change", () => {
 
 
   
+
