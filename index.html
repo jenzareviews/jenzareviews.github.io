@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JenzaReviews</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+  <!-- Navbar -->
+  <nav class="bg-white shadow-md">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-blue-600">JenzaReviews</h1>
+     <div class="flex items-center space-x-4">
+
+  <!-- Contact Button -->
+  <a href="mailto:jenzareviews@gmail.com"
+     class="hidden md:inline-block px-4 py-2 rounded-lg font-medium text-gray-700 hover:text-white hover:bg-gray-600 transition">
+    Contact
+  </a>
+
+  <!-- Login/Logout Button (filled by JS) -->
+  <button id="authButton"
+          class="px-4 py-2 rounded-lg font-medium text-gray-700 hover:text-white hover:bg-blue-500 transition">
+    Login
+  </button>
+
+  <!-- Register Button -->
+  <a href="register.html"
+     class="px-5 py-2 rounded-lg font-semibold bg-blue-500 text-white hover:bg-blue-600 transition">
+     Register
+  </a>
+</div>
+
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="max-w-5xl mx-auto px-6 py-20 text-center">
+    <h2 class="text-5xl font-bold text-blue-600 mb-6">Learn About Your Professors at AUA</h2>
+    <p class="text-xl mb-6">
+      JenzaReviews is a new and improved way of learning about professors’ teaching styles and <strong>course effectiveness</strong>. 
+      Since this tool is in its early stages, please support us by leaving a few reviews about your past professors! 
+      <em>(Note: for now, you must leave at least 1 review to access other reviews.)</em>
+    </p>
+    <p class="text-lg mb-8">
+      This website was created to give students a platform to <strong>anonymously</strong> read and write feedback about AUA professors. 
+      Please remember to be respectful and avoid personal attacks. Inappropriate reviews will be taken down.
+    </p>
+    <p class="text-lg mb-8 text-yellow-600">
+      Reminder: Reviews reflect individual student experiences and opinions. Your experience with a professor may differ, so don’t let these reviews alone decide how you feel. Use them as a guide, not objective truth.
+    </p>
+
+    <!-- Hero Buttons -->
+    <div class="flex justify-center gap-4">
+      <a href="register.html" 
+         class="inline-block bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-bold transition shadow-md hover:shadow-lg">
+         Get Started
+      </a>
+      <a href="professors.html" 
+         class="inline-block bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-bold transition shadow-md hover:shadow-lg">
+         Professor Search
+      </a>
+    </div>
+  </section>
+<!-- Disclaimer Section -->
+<section class="max-w-4xl mx-auto px-6 py-10 mb-6 bg-blue-50 border border-blue-200 rounded-lg">
+  <h3 class="text-xl font-bold mb-4 text-blue-700">Disclaimer</h3>
+  <p class="text-gray-700 leading-relaxed">
+    JenzaReviews is an <strong>independent, student-run platform</strong> and is
+    <strong>not affiliated with, endorsed by, or officially connected to AUA</strong>
+    or its faculty.
+    <br><br>
+    All reviews reflect <strong>individual student opinions and experiences</strong>
+    only and should not be interpreted as factual claims.
+    Users are solely responsible for the content they submit.
+  </p>
+</section>
+
+<!-- Policies Section -->
+<section class="max-w-4xl mx-auto px-6 py-16 bg-white shadow rounded-lg mb-16">
+  <h3 class="text-2xl font-bold mb-6">Our Policies</h3>
+  <ul class="list-disc list-inside space-y-3 text-gray-700">
+    <li>All reviews must be respectful. Personal attacks or offensive language are not allowed.</li>
+    <li>
+      Reviews must not contain false statements presented as fact, accusations of illegal or unethical behavior,
+      or claims unrelated to a professor’s teaching or course effectiveness.
+    </li>
+    <li>Only AUA students with a verified university email (@edu.aua.am) may submit reviews.</li>
+    <li>Reviews are anonymous to other users, but the system tracks accounts to prevent abuse.</li>
+    <li>Each student can submit at most 1 review per professor to maintain fairness.</li>
+    <li>Administrators reserve the right to remove reviews that violate these rules.</li>
+  </ul>
+
+  <p class="mt-8 text-sm text-gray-600">
+    Issues with the website? Can’t find your professor?  
+    Contact <a href="mailto:jenzareviews@gmail.com" class="text-blue-600 hover:underline">jenzareviews@gmail.com</a>
+  </p>
+</section>
+
+
+  <!-- Script to handle Login/Logout and avatar -->
+<script type="module">
+const supabaseUrl = "https://yfvshmfkyxcwgyhfhqms.supabase.co";
+const supabaseAnonKey = "YOUR_SUPABASE_ANON_KEY";
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+async function loadNavbarUser() {
+  const authButton = document.getElementById("authButton");
+  const { data: { session } } = await supabaseClient.auth.getSession();
+
+  if (session && session.user) {
+    // User is logged in
+    authButton.textContent = "Sign out";
+    authButton.onclick = async () => {
+      await supabaseClient.auth.signOut();
+      window.location.reload(); // refresh to update UI
+    };
+  } else {
+    // User is not logged in
+    authButton.textContent = "Login";
+    authButton.onclick = () => window.location.href = "/login.html";
+  }
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  await loadNavbarUser();
+});
+</script>
+
+
+</body>
+</html>
+

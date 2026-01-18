@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>JenzaReviews - Search</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="script.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex flex-col items-center">
+
+  <!-- NAVBAR -->
+<nav class="w-full bg-white shadow-sm px-6 py-4 flex items-center justify-between">
+  <!-- Left side: menu + logo -->
+  <div class="flex items-center gap-4">
+    <a href="home.html" class="text-xl font-semibold hover:text-blue-600 transition">
+      JenzaReviews
+    </a>
+  </div>
+
+  <!-- Right side: auth -->
+  <div id="authStatus" class="flex items-center gap-4 text-sm">
+    <!-- Filled by JS -->
+  </div>
+</nav>
+
+<div id="authStatus" class="flex items-center gap-4 text-sm">
+  <!-- Filled by JS -->
+</div>
+
+  <!-- PAGE CONTENT -->
+  <div class="w-full flex flex-col items-center p-4">
+
+    <h1 class="text-3xl font-bold mb-6 text-center">Professor Search</h1>
+
+
+
+    <!-- Search -->
+    <input
+      type="text"
+      id="professorSearch"
+      placeholder="Search professors..."
+      class="p-3 w-full max-w-3xl mb-4 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+    />
+
+        <!-- Front page professor leaderboard -->
+<div id="professorLeaderboard" class="w-full max-w-3xl mb-6">
+  <ul id="leaderboardList" class="space-y-2"></ul>
+</div>
+
+    <!-- Professor list -->
+    <ul id="professorList" class="w-full max-w-3xl mb-4"></ul>
+
+    <!-- Review Section -->
+    <div id="ratingSection" class="hidden bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl">
+      <!-- Professor Name + Average Rating -->
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="profName" class="text-2xl font-semibold"></h2>
+        <p id="avgRating" class="text-lg font-medium text-gray-700"></p>
+      </div>
+
+      <!-- Review Form -->
+      <div class="space-y-3 mb-6">
+        <div>
+          <label class="block font-medium">
+            Comment <span class="text-red-500">*</span>
+          </label>
+          <textarea
+            id="comment"
+            class="w-full border rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+          ></textarea>
+        </div>
+
+        <div class="flex gap-4">
+          <div>
+            <label class="block font-medium">Rating (1–5)</label>
+            <input
+              type="number"
+              id="rating"
+              min="1"
+              max="5"
+              class="w-20 border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label class="block font-medium">Course(s) taken</label>
+            <input
+              type="text"
+              id="course"
+              placeholder="e.g., Math 101"
+              class="border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label class="block font-medium">Would take again?</label>
+            <select
+              id="wouldTakeAgain"
+              class="border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+
+        <button
+          id="submitRating"
+          class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition"
+        >
+          Submit Review
+        </button>
+      </div>
+      <!-- Sort dropdown -->
+<div class="mb-4 flex items-center gap-2">
+  <label for="sortReviews" class="font-medium">Sort by:</label>
+  <select id="sortReviews" class="border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500">
+    <option value="popular">Most Popular</option>
+    <option value="ratingDesc">Highest Rating → Lowest</option>
+    <option value="ratingAsc">Lowest Rating → Highest</option>
+    <option value="recent">Most Recent</option>
+  </select>
+</div>
+
+      <!-- Reviews List -->
+      <h3 class="text-xl font-semibold mb-2">Reviews</h3>
+      <div id="reviews" class="space-y-4"></div>
+    </div>
+
+  </div>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
