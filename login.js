@@ -9,7 +9,7 @@ const errorMsg = document.getElementById("errorMsg");
 const forgotBtn = document.getElementById("forgotPassword");
 const successMsg = document.getElementById("successMsg");
 
-
+// --- Login Form ---
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   errorMsg.textContent = "";
@@ -17,26 +17,26 @@ loginForm.addEventListener("submit", async (e) => {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
 
-const { data, error } = await supabaseClient.auth.signInWithPassword({
-  email,
-  password
-});
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
 
-if (error) {
-  if (error.message.toLowerCase().includes("not confirmed")) {
-    errorMsg.textContent =
-      "Please verify your email before logging in.";
-  } else {
-    errorMsg.textContent = error.message;
+  if (error) {
+    if (error.message.toLowerCase().includes("not confirmed")) {
+      errorMsg.textContent =
+        "Please verify your email before logging in. Check your inbox.";
+    } else {
+      errorMsg.textContent = error.message;
+    }
+    return;
   }
-  return;
-}
 
-// ✅ logged in & verified
-window.location.href = "/professors.html";
-
+  // ✅ logged in & verified
+  window.location.href = "/professors.html";
 });
 
+// --- Forgot Password ---
 forgotBtn.addEventListener("click", async () => {
   errorMsg.textContent = "";
   successMsg.textContent = "";
@@ -48,8 +48,9 @@ forgotBtn.addEventListener("click", async () => {
     return;
   }
 
+  // Use absolute URL for password reset redirect
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + "/passreset.html"
+    redirectTo: "https://jenzareviews.github.io/passreset.html"
   });
 
   if (error) {
@@ -58,3 +59,5 @@ forgotBtn.addEventListener("click", async () => {
     successMsg.textContent = "Password reset email sent. Check your inbox.";
   }
 });
+
+
