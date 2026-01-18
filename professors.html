@@ -10,29 +10,29 @@
 
   <body class="bg-gray-50 min-h-screen flex flex-col items-center">
 
-    <!-- NAVBAR -->
+    <!-- navbar -->
   <nav class="w-full bg-white shadow-sm px-6 py-4 flex items-center justify-between">
-    <!-- Left side: menu + logo -->
+    <!-- logo -->
     <div class="flex items-center gap-4">
       <a href="index.html" class="text-xl font-semibold hover:text-blue-600 transition">
         JenzaReviews
       </a>
     </div>
 
-    <!-- Right side: auth -->
+    
     <div id="authStatus" class="flex items-center gap-4 text-sm">
-      <!-- Filled by JS -->
+   
     </div>
   </nav>
 
-    <!-- PAGE CONTENT -->
+   
     <div class="w-full flex flex-col items-center p-4">
 
       <h1 class="text-3xl font-bold mb-6 text-center">Professor Search</h1>
 
 
 
-      <!-- Search -->
+      <!-- search -->
       <input
         type="text"
         id="professorSearch"
@@ -45,12 +45,12 @@
     <ul id="leaderboardList" class="space-y-2"></ul>
   </div>
 
-      <!-- Professor list -->
+      <!-- prof list -->
       <ul id="professorList" class="w-full max-w-3xl mb-4"></ul>
 
-      <!-- Review Section -->
+      <!-- review section -->
       <div id="ratingSection" class="hidden bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl">
-        <!-- Professor Name + Average Rating -->
+        <!-- prof name + avg rating -->
         <div class="flex items-center justify-between mb-4">
           <h2 id="profName" class="text-2xl font-semibold"></h2>
           <p id="avgRating" class="text-lg font-medium text-gray-700"></p>
@@ -110,7 +110,7 @@
             Submit Review
           </button>
         </div>
-        <!-- Sort dropdown -->
+        <!-- sort by -->
   <div class="mb-4 flex items-center gap-2">
     <label for="sortReviews" class="font-medium">Sort by:</label>
     <select id="sortReviews" class="border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500">
@@ -121,7 +121,7 @@
     </select>
   </div>
 
-        <!-- Reviews List -->
+        <!-- reviews list -->
         <h3 class="text-xl font-semibold mb-2">Reviews</h3>
         <div id="reviews" class="space-y-4"></div>
       </div>
@@ -131,6 +131,7 @@
 
   </body>
   </html>
+
 
 
 
