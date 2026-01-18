@@ -9,7 +9,7 @@ const errorMsg = document.getElementById("errorMsg");
 const forgotBtn = document.getElementById("forgotPassword");
 const successMsg = document.getElementById("successMsg");
 
-// --- Login Form ---
+// login form 
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   errorMsg.textContent = "";
@@ -32,11 +32,11 @@ loginForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  // ✅ logged in & verified
+  //if logged in
   window.location.href = "/professors.html";
 });
 
-// --- Forgot Password ---
+//forgot pass
 forgotBtn.addEventListener("click", async () => {
   errorMsg.textContent = "";
   successMsg.textContent = "";
@@ -48,7 +48,7 @@ forgotBtn.addEventListener("click", async () => {
     return;
   }
 
-  // Use absolute URL for password reset redirect
+  // reirect url for pass reset
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
     redirectTo: "https://jenzareviews.github.io/passreset.html"
   });
@@ -59,5 +59,6 @@ forgotBtn.addEventListener("click", async () => {
     successMsg.textContent = "Password reset email sent. Check your inbox.";
   }
 });
+
 
 
