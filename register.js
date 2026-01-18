@@ -21,19 +21,19 @@ registerForm.addEventListener("submit", async (e) => {
   const password = document.getElementById("password").value;
   const confirmPassword = document.getElementById("confirmPassword").value;
 
-  // Only allow university email
+ 
   if (!email.endsWith("@edu.aua.am")) {
     errorMsg.textContent = "Please use your university email (@edu.aua.am).";
     return;
   }
 
-  // Check passwords match
+
   if (password !== confirmPassword) {
     errorMsg.textContent = "Passwords do not match.";
     return;
   }
 
-  // Minimum password length (optional)
+  
   if (password.length < 6) {
     errorMsg.textContent = "Password must be at least 6 characters.";
     return;
@@ -53,13 +53,13 @@ registerForm.addEventListener("submit", async (e) => {
   return;
 }
 
-// 🚨 user already exists (Supabase quirk)
+//  user already exists 
   if (data.user && data.user.identities.length === 0) {
     errorMsg.textContent = "An account with this email already exists. Please log in instead.";
   return;
 }
 
-// ✅ new user
+
 successMsg.textContent = "Registration successful! Check your email to verify your account.";
 registerForm.reset();
 
@@ -92,5 +92,6 @@ resendBtn.addEventListener("click", async () => {
       "Verification email resent. Check your inbox or spam folder.";
   }
 });
+
 
 
