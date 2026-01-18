@@ -315,7 +315,12 @@ async function loadReviews(profId, sort = "recent") {
   const reviewsDiv = document.getElementById("reviews");
   if (!reviewsDiv) return;
 
-  // 1️⃣ Fetch reviews
+  if (!profId) {
+    reviewsDiv.innerHTML = `<p class="text-red-500">Error: Professor ID missing.</p>`;
+    return;
+  }
+
+  // Fetch reviews
   const { data: reviewsData, error: reviewsError } = await supabaseClient
     .from("reviews")
     .select(`
@@ -343,7 +348,7 @@ async function loadReviews(profId, sort = "recent") {
     return;
   }
 
-  // 2️⃣ Sort reviews
+  // Sort reviews
   switch(sort) {
     case "recent":
       reviews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -354,7 +359,7 @@ async function loadReviews(profId, sort = "recent") {
                    - (a.review_votes || []).filter(v => v.vote === -1).length;
         const netB = (b.review_votes || []).filter(v => v.vote === 1).length
                    - (b.review_votes || []).filter(v => v.vote === -1).length;
-        return netB - netA; // descending
+        return netB - netA;
       });
       break;
     case "ratingDesc":
@@ -365,47 +370,41 @@ async function loadReviews(profId, sort = "recent") {
       break;
   }
 
-  // 3️⃣ Calculate average rating
+  // Average rating display
   const ratings = reviews.map(r => r.rating).filter(r => r != null);
   const avgRating = ratings.length > 0
     ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
     : "N/A";
 
-  const profName = document.getElementById("profName");
-  profName.textContent = `${profName.dataset.name} (Avg: ${avgRating}/5)`;
+  const profNameEl = document.getElementById("profName");
+  profNameEl.textContent = `${profNameEl.dataset.name} (Avg: ${avgRating}/5)`;
 
-  // 4️⃣ Get current user
+  // Current user
   const { data: { session } } = await supabaseClient.auth.getSession();
   const userId = session?.user?.id;
 
-  // 5️⃣ Render reviews
+  // Render reviews
   for (const r of reviews) {
     const reviewEl = document.createElement("div");
     reviewEl.className = "p-4 border rounded-lg bg-white shadow-sm mb-4 relative";
 
     // Timestamp
-    const date = new Date(r.created_at).toLocaleString();
     const dateEl = document.createElement("p");
     dateEl.className = "absolute top-2 right-2 text-xs text-gray-400";
-    dateEl.textContent = date;
+    dateEl.textContent = new Date(r.created_at).toLocaleString();
     reviewEl.appendChild(dateEl);
 
     // Info line
-    const infoEl = document.createElement("p");
-    infoEl.className = "font-medium mb-2 flex gap-4";
-    infoEl.innerHTML = `
-      <span><strong>Course:</strong> ${r.course || "N/A"}</span>
-      <span><strong>Rating:</strong> ${r.rating ?? "N/A"}/5</span>
-      <span><strong>Would take again:</strong> ${r.would_take_again == null ? "N/A" : r.would_take_again ? "Yes" : "No"}</span>
+    reviewEl.innerHTML += `
+      <p class="font-medium mb-2 flex gap-4">
+        <span><strong>Course:</strong> ${r.course || "N/A"}</span>
+        <span><strong>Rating:</strong> ${r.rating ?? "N/A"}/5</span>
+        <span><strong>Would take again:</strong> ${r.would_take_again == null ? "N/A" : r.would_take_again ? "Yes" : "No"}</span>
+      </p>
+      <p>${r.comment}</p>
     `;
-    reviewEl.appendChild(infoEl);
 
-    // Comment
-    const commentEl = document.createElement("p");
-    commentEl.textContent = r.comment;
-    reviewEl.appendChild(commentEl);
-
-    // Reddit-style voting
+    // Voting
     const votesRow = document.createElement("div");
     votesRow.className = "flex items-center gap-2 mt-2";
 
@@ -440,20 +439,19 @@ async function loadReviews(profId, sort = "recent") {
     reviewEl.appendChild(votesRow);
 
     // Voting logic
-upBtn.addEventListener("click", async () => {
-  const newVote = userVote === 1 ? 0 : 1;
-  await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
-  userVote = newVote; // update local reference
-});
+    upBtn.addEventListener("click", async () => {
+      const newVote = userVote === 1 ? 0 : 1;
+      await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
+      userVote = newVote;
+    });
 
-downBtn.addEventListener("click", async () => {
-  const newVote = userVote === -1 ? 0 : -1;
-  await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
-  userVote = newVote; // update local reference
-});
+    downBtn.addEventListener("click", async () => {
+      const newVote = userVote === -1 ? 0 : -1;
+      await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
+      userVote = newVote;
+    });
 
-
-    // Edit/Delete for owner
+    // Edit/Delete
     if (userId && r.user_id === userId) {
       const controls = document.createElement("div");
       controls.className = "mt-2 flex gap-2 text-sm";
@@ -461,12 +459,12 @@ downBtn.addEventListener("click", async () => {
       const editBtn = document.createElement("button");
       editBtn.textContent = "Edit";
       editBtn.className = "text-blue-500 hover:underline";
-      editBtn.onclick = () => editReview(r);
+      editBtn.onclick = () => editReview(r, profId); // pass profId
 
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
       delBtn.className = "text-red-500 hover:underline";
-      delBtn.onclick = () => deleteReview(r.id);
+      delBtn.onclick = () => deleteReview(r.id, profId); // pass profId
 
       controls.append(editBtn, delBtn);
       reviewEl.appendChild(controls);
@@ -478,10 +476,13 @@ downBtn.addEventListener("click", async () => {
 
 
 
+
 // ------------------------
 // Edit Review
 // ------------------------
-async function editReview(review) {
+async function editReview(review, profId) {
+  if (!profId) return alert("Professor ID missing!");
+
   ratingInput.value = review.rating || "";
   commentInput.value = review.comment || "";
   courseInput.value = review.course || "";
@@ -489,9 +490,8 @@ async function editReview(review) {
     review.would_take_again === true ? "true" :
     review.would_take_again === false ? "false" : "";
 
-
-
   submitBtn.textContent = "Update Review";
+  submitBtn.removeEventListener("click", submitReviewHandler);
 
   const updateHandler = async () => {
     const rating = parseInt(ratingInput.value);
@@ -518,6 +518,7 @@ async function editReview(review) {
 
     if (error) return alert("Failed to update review: " + error.message);
 
+    // Reset form
     ratingInput.value = "";
     commentInput.value = "";
     courseInput.value = "";
@@ -527,12 +528,13 @@ async function editReview(review) {
     submitBtn.removeEventListener("click", updateHandler);
     submitBtn.addEventListener("click", submitReviewHandler);
 
+    // Reload reviews after edit
     await loadReviews(profId);
   };
 
-  submitBtn.removeEventListener("click", submitReviewHandler);
   submitBtn.addEventListener("click", updateHandler);
 }
+
 
 // ------------------------
 // Delete Review
@@ -643,6 +645,7 @@ sortSelect.addEventListener("change", () => {
 
 
   
+
 
 
 
