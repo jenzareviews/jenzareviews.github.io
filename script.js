@@ -381,6 +381,7 @@ async function loadReviews(profId, sort = "recent") {
   // 5️⃣ Render reviews
   for (const r of reviews) {
     const reviewEl = document.createElement("div");
+    reviewEl.id = `review-${r.id}`; // add unique ID
     reviewEl.className = "p-4 border rounded-lg bg-white shadow-sm mb-4 relative";
 
     // Timestamp
@@ -394,14 +395,17 @@ async function loadReviews(profId, sort = "recent") {
     const infoEl = document.createElement("p");
     infoEl.className = "font-medium mb-2 flex gap-4";
     infoEl.innerHTML = `
-      <span><strong>Course:</strong> ${r.course || "N/A"}</span>
-      <span><strong>Rating:</strong> ${r.rating ?? "N/A"}/5</span>
-      <span><strong>Would take again:</strong> ${r.would_take_again == null ? "N/A" : r.would_take_again ? "Yes" : "No"}</span>
+      <span><strong>Course:</strong> <span class="course">${r.course || "N/A"}</span></span>
+      <span><strong>Rating:</strong> <span class="rating">${r.rating ?? "N/A"}</span>/5</span>
+      <span><strong>Would take again:</strong> <span class="wouldTakeAgain">${
+        r.would_take_again == null ? "N/A" : r.would_take_again ? "Yes" : "No"
+      }</span></span>
     `;
     reviewEl.appendChild(infoEl);
 
     // Comment
     const commentEl = document.createElement("p");
+    commentEl.className = "comment";
     commentEl.textContent = r.comment;
     reviewEl.appendChild(commentEl);
 
@@ -440,18 +444,17 @@ async function loadReviews(profId, sort = "recent") {
     reviewEl.appendChild(votesRow);
 
     // Voting logic
-upBtn.addEventListener("click", async () => {
-  const newVote = userVote === 1 ? 0 : 1;
-  await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
-  userVote = newVote; // update local reference
-});
+    upBtn.addEventListener("click", async () => {
+      const newVote = userVote === 1 ? 0 : 1;
+      await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
+      userVote = newVote;
+    });
 
-downBtn.addEventListener("click", async () => {
-  const newVote = userVote === -1 ? 0 : -1;
-  await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
-  userVote = newVote; // update local reference
-});
-
+    downBtn.addEventListener("click", async () => {
+      const newVote = userVote === -1 ? 0 : -1;
+      await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
+      userVote = newVote;
+    });
 
     // Edit/Delete for owner
     if (userId && r.user_id === userId) {
@@ -461,12 +464,13 @@ downBtn.addEventListener("click", async () => {
       const editBtn = document.createElement("button");
       editBtn.textContent = "Edit";
       editBtn.className = "text-blue-500 hover:underline";
-      editBtn.onclick = () => editReview(r);
+      // ✅ Pass profId to editReview
+      editBtn.onclick = () => editReview(r, profId);
 
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
       delBtn.className = "text-red-500 hover:underline";
-      delBtn.onclick = () => deleteReview(r.id);
+      delBtn.onclick = () => deleteReview(r.id, profId); // pass profId for refresh
 
       controls.append(editBtn, delBtn);
       reviewEl.appendChild(controls);
@@ -475,6 +479,7 @@ downBtn.addEventListener("click", async () => {
     reviewsDiv.appendChild(reviewEl);
   }
 }
+
 
 
 
@@ -666,5 +671,6 @@ sortSelect.addEventListener("change", () => {
 
 
   
+
 
 
