@@ -381,7 +381,6 @@ async function loadReviews(profId, sort = "recent") {
   // 5️⃣ Render reviews
   for (const r of reviews) {
     const reviewEl = document.createElement("div");
-    reviewEl.id = `review-${r.id}`; // add unique ID
     reviewEl.className = "p-4 border rounded-lg bg-white shadow-sm mb-4 relative";
 
     // Timestamp
@@ -395,17 +394,14 @@ async function loadReviews(profId, sort = "recent") {
     const infoEl = document.createElement("p");
     infoEl.className = "font-medium mb-2 flex gap-4";
     infoEl.innerHTML = `
-      <span><strong>Course:</strong> <span class="course">${r.course || "N/A"}</span></span>
-      <span><strong>Rating:</strong> <span class="rating">${r.rating ?? "N/A"}</span>/5</span>
-      <span><strong>Would take again:</strong> <span class="wouldTakeAgain">${
-        r.would_take_again == null ? "N/A" : r.would_take_again ? "Yes" : "No"
-      }</span></span>
+      <span><strong>Course:</strong> ${r.course || "N/A"}</span>
+      <span><strong>Rating:</strong> ${r.rating ?? "N/A"}/5</span>
+      <span><strong>Would take again:</strong> ${r.would_take_again == null ? "N/A" : r.would_take_again ? "Yes" : "No"}</span>
     `;
     reviewEl.appendChild(infoEl);
 
     // Comment
     const commentEl = document.createElement("p");
-    commentEl.className = "comment";
     commentEl.textContent = r.comment;
     reviewEl.appendChild(commentEl);
 
@@ -444,17 +440,18 @@ async function loadReviews(profId, sort = "recent") {
     reviewEl.appendChild(votesRow);
 
     // Voting logic
-    upBtn.addEventListener("click", async () => {
-      const newVote = userVote === 1 ? 0 : 1;
-      await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
-      userVote = newVote;
-    });
+upBtn.addEventListener("click", async () => {
+  const newVote = userVote === 1 ? 0 : 1;
+  await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
+  userVote = newVote; // update local reference
+});
 
-    downBtn.addEventListener("click", async () => {
-      const newVote = userVote === -1 ? 0 : -1;
-      await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
-      userVote = newVote;
-    });
+downBtn.addEventListener("click", async () => {
+  const newVote = userVote === -1 ? 0 : -1;
+  await submitVote(r.id, newVote, netVoteEl, upBtn, downBtn);
+  userVote = newVote; // update local reference
+});
+
 
     // Edit/Delete for owner
     if (userId && r.user_id === userId) {
@@ -464,13 +461,12 @@ async function loadReviews(profId, sort = "recent") {
       const editBtn = document.createElement("button");
       editBtn.textContent = "Edit";
       editBtn.className = "text-blue-500 hover:underline";
-      // ✅ Pass profId to editReview
-      editBtn.onclick = () => editReview(r, profId);
+      editBtn.onclick = () => editReview(r);
 
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
       delBtn.className = "text-red-500 hover:underline";
-      delBtn.onclick = () => deleteReview(r.id, profId); // pass profId for refresh
+      delBtn.onclick = () => deleteReview(r.id);
 
       controls.append(editBtn, delBtn);
       reviewEl.appendChild(controls);
@@ -482,12 +478,10 @@ async function loadReviews(profId, sort = "recent") {
 
 
 
-
 // ------------------------
 // Edit Review
 // ------------------------
-async function editReview(review, profId) {
-  // Populate form with current review values
+async function editReview(review) {
   ratingInput.value = review.rating || "";
   commentInput.value = review.comment || "";
   courseInput.value = review.course || "";
@@ -495,10 +489,9 @@ async function editReview(review, profId) {
     review.would_take_again === true ? "true" :
     review.would_take_again === false ? "false" : "";
 
-  submitBtn.textContent = "Update Review";
 
-  // Remove previous submit listener and add update listener
-  submitBtn.removeEventListener("click", submitReviewHandler);
+
+  submitBtn.textContent = "Update Review";
 
   const updateHandler = async () => {
     const rating = parseInt(ratingInput.value);
@@ -508,13 +501,11 @@ async function editReview(review, profId) {
 
     if (!comment) return alert("Enter a comment.");
 
-    // Get current user
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session || !session.user) return alert("You must be logged in.");
     const userId = session.user.id;
 
-    // Update review in Supabase and return updated row
-    const { data: updatedReview, error } = await supabaseClient
+    const { error } = await supabaseClient
       .from("reviews")
       .update({
         rating: isNaN(rating) ? null : rating,
@@ -523,44 +514,25 @@ async function editReview(review, profId) {
         would_take_again: wouldTakeAgain === "true" ? true : wouldTakeAgain === "false" ? false : null
       })
       .eq("id", review.id)
-      .eq("user_id", userId)
-      .select(); // return updated row
+      .eq("user_id", userId);
 
     if (error) return alert("Failed to update review: " + error.message);
 
-    // Reset form
     ratingInput.value = "";
     commentInput.value = "";
     courseInput.value = "";
     wouldTakeAgainSelect.value = "";
     submitBtn.textContent = "Submit Review";
 
-    // Remove this update listener and restore the normal submit handler
     submitBtn.removeEventListener("click", updateHandler);
     submitBtn.addEventListener("click", submitReviewHandler);
 
-    // Update the review in the DOM immediately
-    if (updatedReview && updatedReview.length > 0) {
-      const updated = updatedReview[0];
-      const reviewEl = document.getElementById(`review-${updated.id}`);
-      if (reviewEl) {
-        reviewEl.querySelector(".comment").textContent = updated.comment;
-        reviewEl.querySelector(".rating").textContent = updated.rating ?? "";
-        reviewEl.querySelector(".course").textContent = updated.course ?? "";
-        reviewEl.querySelector(".wouldTakeAgain").textContent = 
-          updated.would_take_again === true ? "Yes" :
-          updated.would_take_again === false ? "No" : "—";
-      }
-    }
-
-    // Optionally, refresh all reviews to sync fully
     await loadReviews(profId);
   };
 
+  submitBtn.removeEventListener("click", submitReviewHandler);
   submitBtn.addEventListener("click", updateHandler);
 }
-
-
 
 // ------------------------
 // Delete Review
@@ -671,6 +643,7 @@ sortSelect.addEventListener("change", () => {
 
 
   
+
 
 
 
