@@ -1,13 +1,8 @@
-// ------------------------
 // Supabase Initialization
-// ------------------------
 const supabaseUrl = "https://yfvshmfkyxcwgyhfhqms.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmdnNobWZreXhjd2d5aGZocW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1MTc5NzIsImV4cCI6MjA4NDA5Mzk3Mn0.jMSSyu1ISa1dArbASM9szweWyZONpM1z1XfPHHr6eMc";
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
-
-// ------------------------
-// Protect Page
-// ------------------------
+//protect page
 async function protectPage() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session || !session.user) {
@@ -21,10 +16,7 @@ async function protectPage() {
   }
 }
 protectPage();
-
-// ------------------------
-// DOM Elements
-// ------------------------
+//dom elements
 const professorSearch = document.getElementById("professorSearch");
 const professorList = document.getElementById("professorList");
 const ratingSection = document.getElementById("ratingSection");
@@ -37,15 +29,11 @@ const wouldTakeAgainSelect = document.getElementById("wouldTakeAgain");
 const submitBtn = document.getElementById("submitRating");
 const sortSelect = document.getElementById("sortReviews");
 
-// ------------------------
-// Global State
-// ------------------------
+
 let professors = [];
 let selectedProfId = null;
 
-// ------------------------
-// Load Navbar User
-// ------------------------
+//navbar user
 async function loadNavbarUser() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   const authStatus = document.getElementById("authStatus");
@@ -74,9 +62,6 @@ async function loadNavbarUser() {
   });
 }
 
-// ------------------------
-// Load Professors
-// ------------------------
 async function loadProfessors() {
   const { data, error } = await supabaseClient
     .from("professors")
@@ -90,9 +75,7 @@ async function loadProfessors() {
   professors = data;
 }
 
-// ------------------------
-// Populate Professor List
-// ------------------------
+//prof list maker
 function populateList(filtered) {
   professorList.innerHTML = "";
   filtered.forEach(prof => {
@@ -110,7 +93,7 @@ function populateList(filtered) {
       professorSearch.value = prof.name;
       professorList.innerHTML = "";
 
-      // Check if user has any reviews yet
+      // check for min 1 review
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session || !session.user) {
         alert("You must be logged in to submit a review.");
@@ -139,9 +122,7 @@ function populateList(filtered) {
   });
 }
 
-// ------------------------
-// Live Search
-// ------------------------
+//live search
 professorSearch.addEventListener("input", () => {
   const query = professorSearch.value.toLowerCase();
   const filtered = professors.filter(p => p.name.toLowerCase().includes(query));
@@ -151,10 +132,7 @@ professorSearch.addEventListener("input", () => {
 professorSearch.addEventListener("focus", () => {
   populateList(professors);
 });
-
-// ------------------------
-// Load Top Professors
-// ------------------------
+//professor ranking
 async function loadTopProfessors(minReviews = 5) {
   const { data: professorsData, error } = await supabaseClient
     .from("professors")
@@ -197,9 +175,7 @@ async function loadTopProfessors(minReviews = 5) {
   });
 }
 
-// ------------------------
-// Load Reviews
-// ------------------------
+//load reviews
 async function loadReviews(profId, sort = "recent") {
   if (!profId) return;
 
@@ -223,7 +199,7 @@ async function loadReviews(profId, sort = "recent") {
     return;
   }
 
-  // Sort reviews
+//sort reviews
   switch(sort) {
     case "recent": reviews.sort((a,b)=> new Date(b.created_at)-new Date(a.created_at)); break;
     case "popular":
@@ -235,12 +211,12 @@ async function loadReviews(profId, sort = "recent") {
     case "ratingAsc": reviews.sort((a,b)=>(a.rating||0)-(b.rating||0)); break;
   }
 
-  // Average rating
+  // avg rating
   const avgRating = reviews.map(r=>r.rating).filter(r=>r!=null);
   const displayAvg = avgRating.length ? (avgRating.reduce((a,b)=>a+b,0)/avgRating.length).toFixed(1) : "N/A";
   profName.textContent = `${profName.dataset.name} (Avg: ${displayAvg}/5)`;
 
-  // Current user
+  
   const { data: { session } } = await supabaseClient.auth.getSession();
   const userId = session?.user?.id;
 
@@ -248,13 +224,13 @@ async function loadReviews(profId, sort = "recent") {
     const reviewEl = document.createElement("div");
     reviewEl.className = "p-4 border rounded-lg bg-white shadow-sm mb-4 relative";
 
-    // Timestamp
+    
     const dateEl = document.createElement("p");
     dateEl.className = "absolute top-2 right-2 text-xs text-gray-400";
     dateEl.textContent = new Date(r.created_at).toLocaleString();
     reviewEl.appendChild(dateEl);
 
-    // Info & comment
+   
     reviewEl.innerHTML += `
       <p class="font-medium mb-2 flex gap-4">
         <span><strong>Course:</strong> ${r.course||"N/A"}</span>
@@ -264,7 +240,7 @@ async function loadReviews(profId, sort = "recent") {
       <p>${r.comment}</p>
     `;
 
-    // Voting
+    // upvote/downvote
     const votesRow = document.createElement("div");
     votesRow.className = "flex items-center gap-2 mt-2";
     const votes = r.review_votes || [];
@@ -322,9 +298,7 @@ async function loadReviews(profId, sort = "recent") {
   });
 }
 
-// ------------------------
-// Edit Review
-// ------------------------
+//editreview
 async function editReview(review, profId) {
   if (!profId) return alert("Professor ID missing!");
 
@@ -376,9 +350,7 @@ async function editReview(review, profId) {
   submitBtn.addEventListener("click", updateHandler);
 }
 
-// ------------------------
-// Delete Review
-// ------------------------
+//delete review
 async function deleteReview(reviewId) {
   if(!confirm("Are you sure you want to delete this review?")) return;
 
@@ -397,9 +369,7 @@ async function deleteReview(reviewId) {
   loadReviews(selectedProfId);
 }
 
-// ------------------------
-// Submit Review
-// ------------------------
+//submit review
 async function submitReviewHandler() {
   const comment = commentInput.value.trim();
   const rating = parseInt(ratingInput.value);
@@ -437,9 +407,7 @@ async function submitReviewHandler() {
   loadReviews(selectedProfId);
 }
 
-// ------------------------
-// Submit Vote
-// ------------------------
+
 async function submitVote(reviewId,newVote,netVoteEl,upBtn,downBtn){
   const { data: { session } } = await supabaseClient.auth.getSession();
   if(!session || !session.user) return alert("You must be logged in.");
@@ -470,9 +438,7 @@ async function submitVote(reviewId,newVote,netVoteEl,upBtn,downBtn){
   downBtn.className=newVote===-1?"bg-red-600 text-white px-1 rounded":"border border-red-600 text-red-600 px-1 rounded";
 }
 
-// ------------------------
-// Initialize Page
-// ------------------------
+//initialize
 window.addEventListener("DOMContentLoaded", async ()=>{
   await protectPage();
   await loadProfessors();
@@ -497,6 +463,7 @@ window.addEventListener("DOMContentLoaded", async ()=>{
 
 
   
+
 
 
 
