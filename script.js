@@ -112,7 +112,7 @@ function populateList(filtered) {
       }
 
       if (userReviews.length === 0) {
-        reviewsDiv.innerHTML = `<p class="text-yellow-500 mb-2">Submit your first review to unlock other reviews.</p>`;
+        reviewsDiv.innerHTML = `<p class="text-yellow-500 mb-2">Submit at least 1 review (for any professor you like) to unlock other reviews.</p>`;
       } else {
         loadReviews(selectedProfId);
       }
@@ -463,6 +463,7 @@ window.addEventListener("DOMContentLoaded", async ()=>{
 
 
   
+
 
 
 
