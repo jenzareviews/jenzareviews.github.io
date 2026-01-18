@@ -89,42 +89,6 @@ async function loadProfessors() {
   }
   professors = data;
 }
-async function selectProfessor(prof) {
-  // Update global selectedProfId and profName dataset
-  selectedProfId = prof.id;
-  profName.dataset.id = prof.id;
-  profName.dataset.name = prof.name;
-  profName.textContent = prof.name;
-
-  // Show the review section and clear search list
-  ratingSection.style.display = "block";
-  professorSearch.value = prof.name;
-  professorList.innerHTML = "";
-
-  // Check if user has any reviews yet
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session || !session.user) {
-    alert("You must be logged in to submit a review.");
-    return;
-  }
-  const userId = session.user.id;
-
-  const { data: userReviews, error } = await supabaseClient
-    .from("reviews")
-    .select("id")
-    .eq("user_id", userId);
-
-  if (error) {
-    console.error("Failed to fetch user reviews:", error.message);
-    return;
-  }
-
-  if (userReviews.length === 0) {
-    reviewsDiv.innerHTML = `<p class="text-yellow-500 mb-2">Submit your first review to unlock other reviews.</p>`;
-  } else {
-    loadReviews(selectedProfId);
-  }
-}
 
 // ------------------------
 // Populate Professor List
@@ -134,15 +98,45 @@ function populateList(filtered) {
   filtered.forEach(prof => {
     const li = document.createElement("li");
     li.textContent = prof.name;
+    li.dataset.id = prof.id;
     li.className = "p-2 mb-1 border rounded-lg cursor-pointer hover:bg-gray-100 transition";
 
-    // Just call selectProfessor when clicked
-    li.addEventListener("click", () => selectProfessor(prof));
+    li.addEventListener("click", async () => {
+      selectedProfId = prof.id;
+      profName.dataset.id = prof.id;
+      profName.textContent = prof.name;
+      ratingSection.style.display = "block";
+      professorSearch.value = prof.name;
+      professorList.innerHTML = "";
+
+      // Check if user has any reviews yet
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session || !session.user) {
+        alert("You must be logged in to submit a review.");
+        return;
+      }
+      const userId = session.user.id;
+
+      const { data: userReviews, error } = await supabaseClient
+        .from("reviews")
+        .select("id")
+        .eq("user_id", userId);
+
+      if (error) {
+        console.error("Failed to fetch user reviews:", error.message);
+        return;
+      }
+
+      if (userReviews.length === 0) {
+        reviewsDiv.innerHTML = `<p class="text-yellow-500 mb-2">Submit your first review to unlock other reviews.</p>`;
+      } else {
+        loadReviews(selectedProfId);
+      }
+    });
 
     professorList.appendChild(li);
   });
 }
-
 
 // ------------------------
 // Live Search
@@ -478,20 +472,12 @@ async function submitVote(reviewId,newVote,netVoteEl,upBtn,downBtn){
 // Initialize Page
 // ------------------------
 window.addEventListener("DOMContentLoaded", async ()=>{
-  const professorSearch = document.getElementById("professorSearch");
-  const professorList = document.getElementById("professorList");
-  const ratingSection = document.getElementById("ratingSection");
-  const profName = document.getElementById("profName");
-  const reviewsDiv = document.getElementById("reviews");
-  const ratingInput = document.getElementById("rating");
-  const commentInput = document.getElementById("comment");
-  const courseInput = document.getElementById("course");
-  const wouldTakeAgainSelect = document.getElementById("wouldTakeAgain");
-  const submitBtn = document.getElementById("submitRating");
-  const sortSelect = document.getElementById("sortReviews");
-
-  let selectedProfId = null;
-  // attach event listeners and call initial functions here
+  await protectPage();
+  await loadProfessors();
+  await loadNavbarUser();
+  await loadTopProfessors();
+  submitBtn.addEventListener("click", submitReviewHandler);
+  sortSelect.addEventListener("change", ()=>{if(selectedProfId) loadReviews(selectedProfId,sortSelect.value);});
 });
 
 
@@ -506,7 +492,9 @@ window.addEventListener("DOMContentLoaded", async ()=>{
 
 
 
+
   
+
 
 
 
