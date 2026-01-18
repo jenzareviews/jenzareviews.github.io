@@ -311,7 +311,7 @@ async function editReview(review, profId) {
   submitBtn.removeEventListener("click", submitReviewHandler);
 
   const updateHandler = async () => {
-    const rating = parseInt(ratingInput.value);
+    const rating = parseFloat(ratingInput.value);
     const comment = commentInput.value.trim();
     const course = courseInput.value.trim();
     const wouldTakeAgain = wouldTakeAgainSelect.value;
@@ -372,7 +372,7 @@ async function deleteReview(reviewId) {
 //submit review
 async function submitReviewHandler() {
   const comment = commentInput.value.trim();
-  const rating = parseInt(ratingInput.value);
+  const rating = parseFloat(ratingInput.value);
   const course = courseInput.value.trim();
   const wouldTakeAgain = wouldTakeAgainSelect.value;
 
@@ -463,6 +463,7 @@ window.addEventListener("DOMContentLoaded", async ()=>{
 
 
   
+
 
 
 
