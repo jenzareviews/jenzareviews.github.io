@@ -482,6 +482,7 @@ downBtn.addEventListener("click", async () => {
 // Edit Review
 // ------------------------
 async function editReview(review, profId) {
+  // Populate form with current review values
   ratingInput.value = review.rating || "";
   commentInput.value = review.comment || "";
   courseInput.value = review.course || "";
@@ -491,6 +492,9 @@ async function editReview(review, profId) {
 
   submitBtn.textContent = "Update Review";
 
+  // Remove previous submit listener and add update listener
+  submitBtn.removeEventListener("click", submitReviewHandler);
+
   const updateHandler = async () => {
     const rating = parseInt(ratingInput.value);
     const comment = commentInput.value.trim();
@@ -499,11 +503,13 @@ async function editReview(review, profId) {
 
     if (!comment) return alert("Enter a comment.");
 
+    // Get current user
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session || !session.user) return alert("You must be logged in.");
     const userId = session.user.id;
 
-    const { error } = await supabaseClient
+    // Update review in Supabase and return updated row
+    const { data: updatedReview, error } = await supabaseClient
       .from("reviews")
       .update({
         rating: isNaN(rating) ? null : rating,
@@ -512,7 +518,8 @@ async function editReview(review, profId) {
         would_take_again: wouldTakeAgain === "true" ? true : wouldTakeAgain === "false" ? false : null
       })
       .eq("id", review.id)
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .select(); // return updated row
 
     if (error) return alert("Failed to update review: " + error.message);
 
@@ -523,17 +530,31 @@ async function editReview(review, profId) {
     wouldTakeAgainSelect.value = "";
     submitBtn.textContent = "Submit Review";
 
-    // Remove edit handler and restore submit handler
+    // Remove this update listener and restore the normal submit handler
     submitBtn.removeEventListener("click", updateHandler);
     submitBtn.addEventListener("click", submitReviewHandler);
 
-    // 🔹 Reload reviews immediately
-    await loadReviews(profId); // Make sure profId is passed to editReview
+    // Update the review in the DOM immediately
+    if (updatedReview && updatedReview.length > 0) {
+      const updated = updatedReview[0];
+      const reviewEl = document.getElementById(`review-${updated.id}`);
+      if (reviewEl) {
+        reviewEl.querySelector(".comment").textContent = updated.comment;
+        reviewEl.querySelector(".rating").textContent = updated.rating ?? "";
+        reviewEl.querySelector(".course").textContent = updated.course ?? "";
+        reviewEl.querySelector(".wouldTakeAgain").textContent = 
+          updated.would_take_again === true ? "Yes" :
+          updated.would_take_again === false ? "No" : "—";
+      }
+    }
+
+    // Optionally, refresh all reviews to sync fully
+    await loadReviews(profId);
   };
 
-  submitBtn.removeEventListener("click", submitReviewHandler);
   submitBtn.addEventListener("click", updateHandler);
 }
+
 
 
 // ------------------------
@@ -645,4 +666,5 @@ sortSelect.addEventListener("change", () => {
 
 
   
+
 
