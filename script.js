@@ -1,8 +1,13 @@
+// ------------------------
 // Supabase Initialization
+// ------------------------
 const supabaseUrl = "https://yfvshmfkyxcwgyhfhqms.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmdnNobWZreXhjd2d5aGZocW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1MTc5NzIsImV4cCI6MjA4NDA5Mzk3Mn0.jMSSyu1ISa1dArbASM9szweWyZONpM1z1XfPHHr6eMc";
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
-//protect page
+
+// ------------------------
+// Protect Page
+// ------------------------
 async function protectPage() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session || !session.user) {
@@ -16,7 +21,10 @@ async function protectPage() {
   }
 }
 protectPage();
-//dom elements
+
+// ------------------------
+// DOM Elements
+// ------------------------
 const professorSearch = document.getElementById("professorSearch");
 const professorList = document.getElementById("professorList");
 const ratingSection = document.getElementById("ratingSection");
@@ -28,12 +36,19 @@ const courseInput = document.getElementById("course");
 const wouldTakeAgainSelect = document.getElementById("wouldTakeAgain");
 const submitBtn = document.getElementById("submitRating");
 const sortSelect = document.getElementById("sortReviews");
+const allProfessorsList = document.getElementById("allProfessorsList");
+const departmentFilter = document.getElementById("departmentFilter");
 
 
+// ------------------------
+// Global State
+// ------------------------
 let professors = [];
 let selectedProfId = null;
 
-//navbar user
+// ------------------------
+// Load Navbar User
+// ------------------------
 async function loadNavbarUser() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   const authStatus = document.getElementById("authStatus");
@@ -62,6 +77,9 @@ async function loadNavbarUser() {
   });
 }
 
+// ------------------------
+// Load Professors
+// ------------------------
 async function loadProfessors() {
   const { data, error } = await supabaseClient
     .from("professors")
@@ -75,7 +93,9 @@ async function loadProfessors() {
   professors = data;
 }
 
-//prof list maker
+// ------------------------
+// Populate Professor List
+// ------------------------
 function populateList(filtered) {
   professorList.innerHTML = "";
   filtered.forEach(prof => {
@@ -93,7 +113,7 @@ function populateList(filtered) {
       professorSearch.value = prof.name;
       professorList.innerHTML = "";
 
-      // check for min 1 review
+      // Check if user has any reviews yet
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session || !session.user) {
         alert("You must be logged in to submit a review.");
@@ -112,7 +132,7 @@ function populateList(filtered) {
       }
 
       if (userReviews.length === 0) {
-        reviewsDiv.innerHTML = `<p class="text-yellow-500 mb-2">Submit at least 1 review (for any professor you like) to unlock other reviews.</p>`;
+        reviewsDiv.innerHTML = `<p class="text-yellow-500 mb-2">Submit your first review to unlock other reviews.</p>`;
       } else {
         loadReviews(selectedProfId);
       }
@@ -122,60 +142,132 @@ function populateList(filtered) {
   });
 }
 
-//live search
+// ------------------------
+// Live Search
+// ------------------------
 professorSearch.addEventListener("input", () => {
   const query = professorSearch.value.toLowerCase();
   const filtered = professors.filter(p => p.name.toLowerCase().includes(query));
-  populateList(filtered);
+  renderAllProfessors(filtered);
 });
 
 professorSearch.addEventListener("focus", () => {
-  populateList(professors);
+  renderAllProfessors(professors);
 });
-//professor ranking
-async function loadTopProfessors(minReviews = 5) {
-  const { data: professorsData, error } = await supabaseClient
+
+
+async function loadAllProfessorsWithStats() {
+  const { data, error } = await supabaseClient
     .from("professors")
-    .select(`id, name, reviews (rating)`);
+    .select(`
+      id,
+      name,
+      department,
+      reviews (rating)
+    `)
+    .order("name", { ascending: true });
 
-  if (error) return console.error(error);
+  if (error) {
+    console.error("Failed to load all professors:", error);
+    return;
+  }
 
-  const topProfessors = professorsData
-    .map(prof => {
-      const ratings = (prof.reviews || []).map(r => r.rating).filter(r => r != null);
-      return {
-        id: prof.id,
-        name: prof.name,
-        avgRating: ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0,
-        reviewCount: ratings.length
-      };
-    })
-    .filter(p => p.reviewCount >= minReviews)
-    .sort((a, b) => b.avgRating - a.avgRating || b.reviewCount - a.reviewCount);
+  professors = data;
+  populateDepartmentFilter(data);
+  renderAllProfessors(data);
+}
+function renderAllProfessors(list) {
+  const allProfessorsList = document.getElementById("allProfessorsList");
+  if (!allProfessorsList) return console.error("Element #allProfessorsList not found!");
 
-  const leaderboardList = document.getElementById("leaderboardList");
-  leaderboardList.innerHTML = "";
-  topProfessors.forEach(prof => {
+  allProfessorsList.innerHTML = "";
+
+  list.forEach(prof => {
+    const ratings = (prof.reviews || []).map(r => r.rating).filter(r => r != null);
+    const reviewCount = ratings.length;
+    const avgRating = reviewCount
+      ? (ratings.reduce((a, b) => a + b, 0) / reviewCount).toFixed(1)
+      : null;
+
     const li = document.createElement("li");
-    li.textContent = `${prof.name} — Avg: ${prof.avgRating.toFixed(1)}/5 (${prof.reviewCount} reviews)`;
-    li.className = "p-3 border rounded-lg bg-white flex justify-between items-center hover:bg-gray-50 cursor-pointer transition";
+    li.className =
+      "p-4 border rounded-lg bg-white hover:bg-gray-50 cursor-pointer transition";
+
+    li.innerHTML = `
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="font-semibold">${prof.name}</p>
+          <p class="text-sm text-gray-500">${prof.department || "Unknown department"}</p>
+        </div>
+        <div class="text-right">
+          ${
+            reviewCount
+              ? `<p class="font-medium">${avgRating}/5</p>
+                 <p class="text-sm text-gray-500">${reviewCount} review${reviewCount > 1 ? "s" : ""}</p>`
+              : `<p class="text-sm text-yellow-600">No reviews yet — be the first!</p>`
+          }
+        </div>
+      </div>
+    `;
 
     li.addEventListener("click", () => {
       selectedProfId = prof.id;
-      profName.dataset.id = prof.id;
       profName.textContent = prof.name;
+      profName.dataset.id = prof.id;
       profName.dataset.name = prof.name;
       ratingSection.style.display = "block";
-      professorSearch.value = prof.name;
-      professorList.innerHTML = "";
-      loadReviews(selectedProfId);
+      loadReviews(prof.id);
     });
 
-    leaderboardList.appendChild(li);
+    allProfessorsList.appendChild(li);
   });
 }
 
-//load reviews
+function populateDepartmentFilter(data) {
+  const departments = [...new Set(
+    data.map(p => p.department).filter(Boolean)
+  )].sort();
+
+  departmentFilter.innerHTML = `<option value="">All departments</option>`;
+
+  
+  // Add "Highest Rated" as a sort option
+  const topOption = document.createElement("option");
+  topOption.value = "highestRated";
+  topOption.textContent = "Highest Rated";
+  departmentFilter.appendChild(topOption);
+
+  departments.forEach(dep => {
+    const opt = document.createElement("option");
+    opt.value = dep;
+    opt.textContent = dep;
+    departmentFilter.appendChild(opt);
+  });
+}
+departmentFilter.addEventListener("change", () => {
+  const selected = departmentFilter.value;
+  let filtered = [...professors];
+
+  if (selected === "highestRated") {
+    filtered.sort((a, b) => {
+      const aRatings = (a.reviews || []).map(r => r.rating).filter(r => r != null);
+      const bRatings = (b.reviews || []).map(r => r.rating).filter(r => r != null);
+      const aAvg = aRatings.length ? aRatings.reduce((x, y) => x + y, 0) / aRatings.length : 0;
+      const bAvg = bRatings.length ? bRatings.reduce((x, y) => x + y, 0) / bRatings.length : 0;
+      return bAvg - aAvg;
+    });
+  } else if (selected) {
+    filtered = filtered.filter(p => p.department === selected);
+  }
+
+  renderAllProfessors(filtered);
+});
+
+await loadAllProfessorsWithStats();
+
+// ------------------------
+// Load Reviews
+// ------------------------
 async function loadReviews(profId, sort = "recent") {
   if (!profId) return;
 
@@ -199,7 +291,7 @@ async function loadReviews(profId, sort = "recent") {
     return;
   }
 
-//sort reviews
+  // Sort reviews
   switch(sort) {
     case "recent": reviews.sort((a,b)=> new Date(b.created_at)-new Date(a.created_at)); break;
     case "popular":
@@ -211,12 +303,12 @@ async function loadReviews(profId, sort = "recent") {
     case "ratingAsc": reviews.sort((a,b)=>(a.rating||0)-(b.rating||0)); break;
   }
 
-  // avg rating
+  // Average rating
   const avgRating = reviews.map(r=>r.rating).filter(r=>r!=null);
   const displayAvg = avgRating.length ? (avgRating.reduce((a,b)=>a+b,0)/avgRating.length).toFixed(1) : "N/A";
   profName.textContent = `${profName.dataset.name} (Avg: ${displayAvg}/5)`;
 
-  
+  // Current user
   const { data: { session } } = await supabaseClient.auth.getSession();
   const userId = session?.user?.id;
 
@@ -224,13 +316,13 @@ async function loadReviews(profId, sort = "recent") {
     const reviewEl = document.createElement("div");
     reviewEl.className = "p-4 border rounded-lg bg-white shadow-sm mb-4 relative";
 
-    
+    // Timestamp
     const dateEl = document.createElement("p");
     dateEl.className = "absolute top-2 right-2 text-xs text-gray-400";
     dateEl.textContent = new Date(r.created_at).toLocaleString();
     reviewEl.appendChild(dateEl);
 
-   
+    // Info & comment
     reviewEl.innerHTML += `
       <p class="font-medium mb-2 flex gap-4">
         <span><strong>Course:</strong> ${r.course||"N/A"}</span>
@@ -240,7 +332,7 @@ async function loadReviews(profId, sort = "recent") {
       <p>${r.comment}</p>
     `;
 
-    // upvote/downvote
+    // Voting
     const votesRow = document.createElement("div");
     votesRow.className = "flex items-center gap-2 mt-2";
     const votes = r.review_votes || [];
@@ -298,7 +390,9 @@ async function loadReviews(profId, sort = "recent") {
   });
 }
 
-//editreview
+// ------------------------
+// Edit Review
+// ------------------------
 async function editReview(review, profId) {
   if (!profId) return alert("Professor ID missing!");
 
@@ -311,7 +405,7 @@ async function editReview(review, profId) {
   submitBtn.removeEventListener("click", submitReviewHandler);
 
   const updateHandler = async () => {
-    const rating = parseFloat(ratingInput.value);
+    const rating = parseInt(ratingInput.value);
     const comment = commentInput.value.trim();
     const course = courseInput.value.trim();
     const wouldTakeAgain = wouldTakeAgainSelect.value;
@@ -350,7 +444,9 @@ async function editReview(review, profId) {
   submitBtn.addEventListener("click", updateHandler);
 }
 
-//delete review
+// ------------------------
+// Delete Review
+// ------------------------
 async function deleteReview(reviewId) {
   if(!confirm("Are you sure you want to delete this review?")) return;
 
@@ -369,10 +465,12 @@ async function deleteReview(reviewId) {
   loadReviews(selectedProfId);
 }
 
-//submit review
+// ------------------------
+// Submit Review
+// ------------------------
 async function submitReviewHandler() {
   const comment = commentInput.value.trim();
-  const rating = parseFloat(ratingInput.value);
+  const rating = parseInt(ratingInput.value);
   const course = courseInput.value.trim();
   const wouldTakeAgain = wouldTakeAgainSelect.value;
 
@@ -407,7 +505,9 @@ async function submitReviewHandler() {
   loadReviews(selectedProfId);
 }
 
-
+// ------------------------
+// Submit Vote
+// ------------------------
 async function submitVote(reviewId,newVote,netVoteEl,upBtn,downBtn){
   const { data: { session } } = await supabaseClient.auth.getSession();
   if(!session || !session.user) return alert("You must be logged in.");
@@ -438,12 +538,15 @@ async function submitVote(reviewId,newVote,netVoteEl,upBtn,downBtn){
   downBtn.className=newVote===-1?"bg-red-600 text-white px-1 rounded":"border border-red-600 text-red-600 px-1 rounded";
 }
 
-//initialize
+// ------------------------
+// Initialize Page
+// ------------------------
 window.addEventListener("DOMContentLoaded", async ()=>{
   await protectPage();
   await loadProfessors();
   await loadNavbarUser();
   await loadTopProfessors();
+  await renderAllProfessors(professors);
   submitBtn.addEventListener("click", submitReviewHandler);
   sortSelect.addEventListener("change", ()=>{if(selectedProfId) loadReviews(selectedProfId,sortSelect.value);});
 });
@@ -463,6 +566,7 @@ window.addEventListener("DOMContentLoaded", async ()=>{
 
 
   
+
 
 
 
