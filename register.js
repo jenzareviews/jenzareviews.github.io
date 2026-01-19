@@ -81,10 +81,14 @@ resendBtn.addEventListener("click", async () => {
     return;
   }
 
-  const { error } = await supabaseClient.auth.resend({
-    type: "signup",
-    email
-  });
+await supabaseClient.auth.resend({
+  type: "signup",
+  email,
+  options: {
+    emailRedirectTo: "https://jenzareviews.github.io/login.html"
+  }
+});
+
 
   if (error) {
     errorMsg.textContent = error.message;
@@ -93,6 +97,7 @@ resendBtn.addEventListener("click", async () => {
       "Verification email resent. Check your inbox or spam folder.";
   }
 });
+
 
 
 
