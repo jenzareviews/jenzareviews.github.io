@@ -44,7 +44,8 @@ registerForm.addEventListener("submit", async (e) => {
     email,
     password,
     options: {
-      emailRedirectTo: window.location.origin + "/login.html"
+      emailRedirectTo: "https://jenzareviews.github.io/login.html"
+
     }
   });
 
@@ -92,6 +93,7 @@ resendBtn.addEventListener("click", async () => {
       "Verification email resent. Check your inbox or spam folder.";
   }
 });
+
 
 
 
