@@ -36,12 +36,15 @@ const courseInput = document.getElementById("course");
 const wouldTakeAgainSelect = document.getElementById("wouldTakeAgain");
 const submitBtn = document.getElementById("submitRating");
 const departmentFilter = document.getElementById("departmentFilter");
+const highestRatedToggle = document.getElementById("highestRatedToggle");
 
 // ------------------------
 // Global State
 // ------------------------
 let professors = [];
 let selectedProfId = null;
+let currentInlineReviewsContainer = null;
+
 
 // ------------------------
 // Load Navbar User
@@ -50,15 +53,12 @@ async function loadNavbarUser() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   const authStatus = document.getElementById("authStatus");
   if (!authStatus) return;
-
   if (!session || !session.user) {
     authStatus.innerHTML = "";
     return;
   }
-
   const user = session.user;
   const firstLetter = (user.email || "U")[0].toUpperCase();
-
   authStatus.innerHTML = `
     <div class="flex items-center gap-2">
       <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center font-bold">
@@ -67,7 +67,6 @@ async function loadNavbarUser() {
       <button id="logoutBtn" class="text-red-600 hover:underline font-medium">Sign out</button>
     </div>
   `;
-
   document.getElementById("logoutBtn").addEventListener("click", async () => {
     await supabaseClient.auth.signOut();
     window.location.href = "/login.html";
@@ -82,12 +81,10 @@ async function loadAllProfessorsWithStats() {
     .from("professors")
     .select(`id, name, department, reviews(rating)`)
     .order("name", { ascending: true });
-
   if (error) {
     console.error("Failed to load all professors:", error);
     return;
   }
-
   professors = data;
   populateDepartmentFilter(data);
   renderAllProfessors(data);
@@ -98,17 +95,13 @@ async function loadAllProfessorsWithStats() {
 // ------------------------
 function renderAllProfessors(list) {
   if (!allProfessorsList) return console.error("Element #allProfessorsList not found!");
-
   allProfessorsList.innerHTML = "";
-
   list.forEach(prof => {
     const ratings = (prof.reviews || []).map(r => r.rating).filter(r => r != null);
     const reviewCount = ratings.length;
     const avgRating = reviewCount ? (ratings.reduce((a, b) => a + b, 0) / reviewCount).toFixed(1) : null;
-
     const li = document.createElement("li");
     li.className = "p-4 border rounded-lg bg-white hover:bg-gray-50 cursor-pointer transition";
-
     li.innerHTML = `
       <div class="flex justify-between items-center">
         <div>
@@ -125,16 +118,43 @@ function renderAllProfessors(list) {
         </div>
       </div>
     `;
+   // create inline reviews container
+const inlineReviews = document.createElement("div");
+inlineReviews.className = "mt-4 hidden";
+li.appendChild(inlineReviews);
 
-    li.addEventListener("click", async () => {
-      selectedProfId = prof.id;
-      profName.textContent = prof.name;
-      profName.dataset.id = prof.id;
-      profName.dataset.name = prof.name;
-      ratingSection.style.display = "block";
-      await loadReviews(prof.id);
-      window.scrollTo({ top: ratingSection.offsetTop - 20, behavior: "smooth" }); // scroll to section
-    });
+li.addEventListener("click", async () => {
+  const isOpen = !inlineReviews.classList.contains("hidden");
+
+  // close others
+  document.querySelectorAll(".inline-reviews").forEach(el => {
+    el.classList.add("hidden");
+  });
+
+  if (isOpen) {
+    inlineReviews.classList.add("hidden");
+    return;
+  }
+
+  // MOVE full review UI here
+  inlineReviews.appendChild(ratingSection);
+  currentInlineReviewsContainer = reviewsDiv; // reviewsDiv inside ratingSection
+
+
+  ratingSection.classList.remove("hidden"); // 🔴 REQUIRED
+  ratingSection.style.display = "block";
+
+  inlineReviews.classList.remove("hidden");
+  inlineReviews.classList.add("inline-reviews");
+
+  inlineReviews.addEventListener("click", e => e.stopPropagation());
+
+  selectedProfId = prof.id;
+
+  await loadReviews(prof.id);
+});
+
+
 
     allProfessorsList.appendChild(li);
   });
@@ -145,15 +165,7 @@ function renderAllProfessors(list) {
 // ------------------------
 function populateDepartmentFilter(data) {
   const departments = [...new Set(data.map(p => p.department).filter(Boolean))].sort();
-
   departmentFilter.innerHTML = `<option value="">All Departments</option>`;
-
-  // Highest Rated option
-  const topOption = document.createElement("option");
-  topOption.value = "highestRated";
-  topOption.textContent = "Highest Rated";
-  departmentFilter.appendChild(topOption);
-
   departments.forEach(dep => {
     const opt = document.createElement("option");
     opt.value = dep;
@@ -161,12 +173,15 @@ function populateDepartmentFilter(data) {
     departmentFilter.appendChild(opt);
   });
 }
-
-departmentFilter.addEventListener("change", () => {
-  const selected = departmentFilter.value;
+function applyProfessorFilters() {
   let filtered = [...professors];
-
-  if (selected === "highestRated") {
+  // Department filter
+  const selectedDepartment = departmentFilter.value;
+  if (selectedDepartment) {
+    filtered = filtered.filter(p => p.department === selectedDepartment);
+  }
+  // Highest Rated toggle
+  if (highestRatedToggle.checked) {
     filtered.sort((a, b) => {
       const aRatings = (a.reviews || []).map(r => r.rating).filter(r => r != null);
       const bRatings = (b.reviews || []).map(r => r.rating).filter(r => r != null);
@@ -174,12 +189,11 @@ departmentFilter.addEventListener("change", () => {
       const bAvg = bRatings.length ? bRatings.reduce((x, y) => x + y, 0) / bRatings.length : 0;
       return bAvg - aAvg;
     });
-  } else if (selected) {
-    filtered = filtered.filter(p => p.department === selected);
   }
-
   renderAllProfessors(filtered);
-});
+}
+departmentFilter.addEventListener("change", applyProfessorFilters);
+highestRatedToggle.addEventListener("change", applyProfessorFilters);
 
 // ------------------------
 // Live Search
@@ -193,110 +207,101 @@ professorSearch.addEventListener("input", () => {
 // ------------------------
 // Load Reviews (OG logic intact)
 // ------------------------
-async function loadReviews(profId, sort = "recent") {
+async function loadReviews(profId, sort = "recent", targetDiv = reviewsDiv) {
   if (!profId) return;
-
   const { data: reviewsData, error } = await supabaseClient
     .from("reviews")
     .select(`id, user_id, rating, comment, course, would_take_again, created_at, review_votes(vote, user_id)`)
     .eq("professor_id", profId);
-
   if (error) {
-    reviewsDiv.innerHTML = `<p class="text-red-500">Failed to load reviews: ${error.message}</p>`;
+    targetDiv.innerHTML = `<p class="text-red-500">Failed to load reviews: ${error.message}</p>`;
     return;
   }
-
   const { data: { session } } = await supabaseClient.auth.getSession();
   const userId = session?.user?.id;
-
   let reviews = reviewsData || [];
-  reviewsDiv.innerHTML = "";
+  targetDiv.innerHTML = "";
   if (!reviews.length) {
-    reviewsDiv.innerHTML = "<p>No reviews yet. Be the first to rate!</p>";
+    targetDiv.innerHTML = "<p>No reviews yet. Be the first to rate!</p>";
     return;
   }
 
   // ------------------------
-// Edit Review
-// ------------------------
-async function editReview(review, profId) {
-  if (!profId) return alert("Professor ID missing!");
+  // Edit Review
+  // ------------------------
+  async function editReview(review, profId) {
+    if (!profId) return alert("Professor ID missing!");
+    // Fill form with existing review
+    ratingInput.value = review.rating || "";
+    commentInput.value = review.comment || "";
+    courseInput.value = review.course || "";
+    wouldTakeAgainSelect.value = review.would_take_again === true ? "true" : review.would_take_again === false ? "false" : "";
+    submitBtn.textContent = "Update Review";
 
-  // Fill form with existing review
-  ratingInput.value = review.rating || "";
-  commentInput.value = review.comment || "";
-  courseInput.value = review.course || "";
-  wouldTakeAgainSelect.value = review.would_take_again === true ? "true" : review.would_take_again === false ? "false" : "";
+    // Remove previous handlers
+    submitBtn.replaceWith(submitBtn.cloneNode(true));
+    const newSubmitBtn = document.getElementById("submitRating");
 
-  submitBtn.textContent = "Update Review";
-  
-  // Remove previous handlers
-  submitBtn.replaceWith(submitBtn.cloneNode(true));
-  const newSubmitBtn = document.getElementById("submitRating");
+    const updateHandler = async () => {
+      const rating = parseInt(ratingInput.value);
+      const comment = commentInput.value.trim();
+      const course = courseInput.value.trim();
+      const wouldTakeAgain = wouldTakeAgainSelect.value;
+      if (!comment) return alert("Enter a comment.");
 
-  const updateHandler = async () => {
-    const rating = parseInt(ratingInput.value);
-    const comment = commentInput.value.trim();
-    const course = courseInput.value.trim();
-    const wouldTakeAgain = wouldTakeAgainSelect.value;
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session || !session.user) return alert("You must be logged in.");
+      const userId = session.user.id;
 
-    if (!comment) return alert("Enter a comment.");
+      const { error } = await supabaseClient
+        .from("reviews")
+        .update({
+          rating: isNaN(rating) ? null : rating,
+          comment,
+          course: course || null,
+          would_take_again: wouldTakeAgain === "true" ? true : wouldTakeAgain === "false" ? false : null
+        })
+        .eq("id", review.id)
+        .eq("user_id", userId);
 
+      if (error) return alert("Failed to update review: " + error.message);
+
+      ratingInput.value = "";
+      commentInput.value = "";
+      courseInput.value = "";
+      wouldTakeAgainSelect.value = "";
+      newSubmitBtn.textContent = "Submit Review";
+
+      // Rebind original submit
+      newSubmitBtn.addEventListener("click", submitReviewHandler);
+
+      // Reload reviews
+      await loadReviews(profId);
+    };
+
+    newSubmitBtn.addEventListener("click", updateHandler);
+  }
+
+  // ------------------------
+  // Delete Review
+  // ------------------------
+  async function deleteReview(reviewId) {
+    if (!confirm("Are you sure you want to delete this review?")) return;
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session || !session.user) return alert("You must be logged in.");
     const userId = session.user.id;
 
     const { error } = await supabaseClient
       .from("reviews")
-      .update({
-        rating: isNaN(rating) ? null : rating,
-        comment,
-        course: course || null,
-        would_take_again: wouldTakeAgain === "true" ? true : wouldTakeAgain === "false" ? false : null
-      })
-      .eq("id", review.id)
+      .delete()
+      .eq("id", reviewId)
       .eq("user_id", userId);
 
-    if (error) return alert("Failed to update review: " + error.message);
+    if (error) return alert("Failed to delete review: " + error.message);
 
-    ratingInput.value = "";
-    commentInput.value = "";
-    courseInput.value = "";
-    wouldTakeAgainSelect.value = "";
-    newSubmitBtn.textContent = "Submit Review";
-
-    // Rebind original submit
-    newSubmitBtn.addEventListener("click", submitReviewHandler);
-
-    // Reload reviews
-    await loadReviews(profId);
-  };
-
-  newSubmitBtn.addEventListener("click", updateHandler);
-}
-
-// ------------------------
-// Delete Review
-// ------------------------
-async function deleteReview(reviewId) {
-  if (!confirm("Are you sure you want to delete this review?")) return;
-
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session || !session.user) return alert("You must be logged in.");
-  const userId = session.user.id;
-
-  const { error } = await supabaseClient
-    .from("reviews")
-    .delete()
-    .eq("id", reviewId)
-    .eq("user_id", userId);
-
-  if (error) return alert("Failed to delete review: " + error.message);
-
-  // Refresh reviews
-  await loadReviews(selectedProfId);
-}
-
+    // Refresh reviews
+    await loadReviews(selectedProfId);
+  }
 
   // Sort reviews
   switch(sort) {
@@ -387,7 +392,8 @@ async function deleteReview(reviewId) {
       reviewEl.appendChild(controls);
     }
 
-    reviewsDiv.appendChild(reviewEl);
+    targetDiv.appendChild(reviewEl);
+
   });
 }
 
@@ -399,7 +405,6 @@ async function submitReviewHandler() {
   const rating = parseInt(ratingInput.value);
   const course = courseInput.value.trim();
   const wouldTakeAgain = wouldTakeAgainSelect.value;
-
   if(!selectedProfId) return alert("Please select a professor first.");
   if(!comment) return alert("Please enter a comment.");
 
@@ -472,6 +477,14 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   await loadNavbarUser();
   await loadAllProfessorsWithStats();
   submitBtn.addEventListener("click", submitReviewHandler);
+
+  const sortDropdown = document.getElementById("sortReviews");
+
+sortDropdown.addEventListener("change", async () => {
+  if (!selectedProfId) return; // do nothing if no professor is selected
+  await loadReviews(selectedProfId, sortDropdown.value, currentInlineReviewsContainer);
+});
+
 });
 
 
@@ -487,8 +500,8 @@ window.addEventListener("DOMContentLoaded", async ()=>{
 
 
 
-
   
+
 
 
 
