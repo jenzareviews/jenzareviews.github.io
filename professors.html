@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JenzaReviews - Search</title>
   <link rel="icon" type="image/jpeg" href="./favicon.ico">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11,102 +12,152 @@
 <body class="bg-gray-50 min-h-screen flex flex-col items-center">
 
   <!-- navbar -->
-  <nav class="w-full bg-white shadow-sm px-6 py-4 flex items-center justify-between">
-    <!-- logo -->
+  <nav class="w-full bg-white shadow-sm px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-6">
-      <a href="index.html" class="text-xl font-semibold hover:text-blue-600 transition">
+      <a href="index.html" class="text-lg font-semibold hover:text-blue-600 transition">
         JenzaReviews
       </a>
     </div>
-
     <div id="authStatus" class="flex items-center gap-4 text-sm"></div>
   </nav>
 
-  <div class="w-full flex flex-col items-center p-4">
+    <!-- top row: recent reviews | search+list | request -->
+<div class="w-full max-w-6xl flex gap-6 mt-2 items-start">
 
-    <h1 class="text-3xl font-bold mb-6 text-center">Professor Search</h1>
+  <!-- left: recent reviews (desktop only) -->
+  <div class="hidden md:block w-64 shrink-0">
+    <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+      <h2 class="text-lg font-semibold mb-3 text-blue-800">Recent Reviews</h2>
+      <div id="recentReviewsList" class="space-y-3"></div>
+    </div>
+  </div>
 
-    <!-- search -->
+  <!-- middle: title + search + filters + professor list -->
+  <div class="flex-1 min-w-0">
+
     <input
       type="text"
       id="professorSearch"
       placeholder="Search professors..."
-      class="p-3 w-full max-w-3xl mb-4 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+      class="p-2 md:p-3 w-full mb-3 md:mb-4 border rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
     />
 
-     <!-- department filter -->
-<div class="mb-4 w-full max-w-3xl flex items-center gap-4">
-  <label for="departmentFilter" class="font-medium">Filter by</label>
-  
-  <select id="departmentFilter" class="border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500">
-    <option value="">All Departments</option>
-  </select>
+    <div class="mb-3 md:mb-4 flex flex-wrap items-center gap-3">
+      <label for="departmentFilter" class="font-medium text-sm md:text-base">Filter by</label>
+      <select id="departmentFilter" class="border rounded-lg p-1 text-sm focus:ring-blue-500 focus:border-blue-500">
+        <option value="">All Departments</option>
+      </select>
+      <label class="flex items-center gap-1 font-medium text-sm md:text-base">
+        <input type="checkbox" id="highestRatedToggle" class="border rounded p-1">
+        Highest Rated
+      </label>
+      <!-- mobile toggle buttons -->
+      <div class="md:hidden ml-auto flex gap-2">
+        <button id="recentReviewsToggleBtn" class="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition">
+         + Recent
+        </button>
+        <button id="requestProfToggleBtn" class="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition">
+         + Request 
+        </button>
+      </div>
+    </div>
 
-  <label class="flex items-center gap-1 font-medium">
-    <input type="checkbox" id="highestRatedToggle" class="border rounded p-1">
-    Show Highest Rated
-  </label>
+    <!-- mobile collapsible panels -->
+    <div id="recentReviewsMobilePanel" class="hidden w-full mb-3 md:hidden">
+      <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+        <h2 class="text-base font-semibold mb-2 text-blue-800">Recent Reviews</h2>
+        <div id="recentReviewsListMobile" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <div id="requestProfMobilePanel" class="hidden w-full mb-3 md:hidden">
+      <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+        <h2 class="text-base font-semibold mb-2 text-blue-800">Can't find your professor?</h2>
+        <p class="text-sm text-gray-500 mb-3">Write their name and department and we'll add them.</p>
+        <input type="text" id="requestProfNameMobile" placeholder="Professor name"
+          class="w-full border rounded-lg p-2 mb-2 text-sm focus:ring-blue-500 focus:border-blue-500" />
+        <input type="text" id="requestProfDeptMobile" placeholder="Department (optional)"
+          class="w-full border rounded-lg p-2 mb-2 text-sm focus:ring-blue-500 focus:border-blue-500" />
+        <button id="requestProfBtnMobile"
+          class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-sm">
+          Submit Request
+        </button>
+        <p id="requestConfirmationMobile" class="text-green-600 text-sm mt-2 hidden">Thanks! We'll look into it.</p>
+      </div>
+    </div>
+
+    <ul id="allProfessorsList" class="w-full mb-4"></ul>
+  </div>
+
+  <!-- right: request a professor (desktop only) -->
+  <div class="hidden md:block w-64 shrink-0">
+    <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+      <h2 class="text-lg font-semibold mb-3 text-blue-800">Can't find your professor?</h2>
+      <p class="text-sm text-gray-500 mb-3">Write their name and department and we'll add them.</p>
+      <input type="text" id="requestProfName" placeholder="Professor name"
+        class="w-full border rounded-lg p-2 mb-2 text-sm focus:ring-blue-500 focus:border-blue-500" />
+      <input type="text" id="requestProfDept" placeholder="Department (optional)"
+        class="w-full border rounded-lg p-2 mb-2 text-sm focus:ring-blue-500 focus:border-blue-500" />
+      <button id="requestProfBtn"
+        class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition text-sm">
+        Submit Request
+      </button>
+      <p id="requestConfirmation" class="text-green-600 text-sm mt-2 hidden">Thanks! We'll look into it.</p>
+    </div>
+  </div>
+
 </div>
-
-
-<ul id="allProfessorsList" class="w-full max-w-3xl mb-4"></ul>
-
-
-    <p class="mt-8 text-sm text-gray-600">
-      Issues with the website? Can’t find your professor?  
+    <p class="mt-8 text-sm text-gray-600 text-center px-4">
+      Issues with the website? Can't find your professor?
       Contact <a href="mailto:jenzareviews@gmail.com" class="text-blue-600 hover:underline">jenzareviews@gmail.com</a>
     </p>
 
-
     <!-- review section -->
-    <div id="ratingSection" class="hidden bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl">
-<!-- prof name + avg rating (hidden now) -->
-<div class="flex items-center justify-between mb-4 hidden">
-  <h2 id="profName" class="text-2xl font-semibold"></h2>
-  <p id="avgRating" class="text-lg font-medium text-gray-700"></p>
-</div>
+    <div id="ratingSection" class="hidden bg-white p-4 md:p-6 rounded-lg shadow-lg w-full max-w-3xl">
 
+      <div class="flex items-center justify-between mb-4 hidden">
+        <h2 id="profName" class="text-2xl font-semibold"></h2>
+        <p id="avgRating" class="text-lg font-medium text-gray-700"></p>
+      </div>
 
       <!-- Review Form -->
       <div class="space-y-3 mb-6">
         <div>
-          <label class="block font-medium">
+          <label class="block font-medium text-sm md:text-base">
             Comment <span class="text-red-500">*</span>
           </label>
           <textarea
             id="comment"
-            class="w-full border rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+            class="w-full border rounded-lg p-2 text-sm md:text-base focus:ring-blue-500 focus:border-blue-500"
           ></textarea>
         </div>
 
-        <div class="flex gap-4">
+        <div class="flex flex-wrap gap-3">
           <div>
-            <label class="block font-medium">Rating (1.0–5.0)</label>
+            <label class="block font-medium text-sm">Rating (1–5)</label>
             <input
               type="number"
               id="rating"
               min="1"
               max="5"
               step="0.1"
-              class="w-20 border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500"
+              class="w-20 border rounded-lg p-1 text-sm focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-
           <div>
-            <label class="block font-medium">Course(s) taken</label>
+            <label class="block font-medium text-sm">Course(s)</label>
             <input
               type="text"
               id="course"
               placeholder="e.g., Math 101"
-              class="border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500"
+              class="border rounded-lg p-1 text-sm focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-
           <div>
-            <label class="block font-medium">Would take again?</label>
+            <label class="block font-medium text-sm">Take again?</label>
             <select
               id="wouldTakeAgain"
-              class="border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500"
+              class="border rounded-lg p-1 text-sm focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select</option>
               <option value="true">Yes</option>
@@ -117,7 +168,7 @@
 
         <button
           id="submitRating"
-          class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition"
+          class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition text-sm md:text-base"
         >
           Submit Review
         </button>
@@ -125,8 +176,8 @@
 
       <!-- sort by -->
       <div class="mb-4 flex items-center gap-2">
-        <label for="sortReviews" class="font-medium">Sort by:</label>
-        <select id="sortReviews" class="border rounded-lg p-1 focus:ring-blue-500 focus:border-blue-500">
+        <label for="sortReviews" class="font-medium text-sm">Sort by:</label>
+        <select id="sortReviews" class="border rounded-lg p-1 text-sm focus:ring-blue-500 focus:border-blue-500">
           <option value="popular">Most Recent</option>
           <option value="recent">Most Popular</option>
           <option value="ratingDesc">Highest Rating → Lowest</option>
@@ -135,16 +186,46 @@
       </div>
 
       <!-- reviews list -->
-      <h3 class="text-xl font-semibold mb-2">Reviews</h3>
+      <h3 class="text-lg md:text-xl font-semibold mb-2">Reviews</h3>
       <div id="reviews" class="space-y-4"></div>
     </div>
 
   </div>
 
-  <script type="module" src="script.js?v=3"></script>
+  <!-- back to top button -->
+  <button
+    id="backToTopBtn"
+    class="hidden fixed bottom-6 right-6 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg hover:bg-blue-600 transition text-sm z-50"
+  >
+    ↑ Top
+  </button>
+
+  <script type="module" src="script.js"></script>
+
+  <script>
+    // mobile recent reviews toggle
+    document.getElementById("recentReviewsToggleBtn").addEventListener("click", () => {
+      document.getElementById("recentReviewsMobilePanel").classList.toggle("hidden");
+    });
+
+    // mobile request panel toggle
+    document.getElementById("requestProfToggleBtn").addEventListener("click", () => {
+      document.getElementById("requestProfMobilePanel").classList.toggle("hidden");
+    });
+
+    // back to top button
+    const backToTopBtn = document.getElementById("backToTopBtn");
+    window.addEventListener("scroll", () => {
+      backToTopBtn.classList.toggle("hidden", window.scrollY <= 300);
+    });
+    backToTopBtn.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  </script>
 
 </body>
-</html>
+</html> 
+
 
 
 
