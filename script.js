@@ -181,15 +181,22 @@ function applyProfessorFilters() {
     filtered = filtered.filter(p => p.department === selectedDepartment);
   }
   // Highest Rated toggle
-  if (highestRatedToggle.checked) {
-    filtered.sort((a, b) => {
-      const aRatings = (a.reviews || []).map(r => r.rating).filter(r => r != null);
-      const bRatings = (b.reviews || []).map(r => r.rating).filter(r => r != null);
-      const aAvg = aRatings.length ? aRatings.reduce((x, y) => x + y, 0) / aRatings.length : 0;
-      const bAvg = bRatings.length ? bRatings.reduce((x, y) => x + y, 0) / bRatings.length : 0;
-      return bAvg - aAvg;
-    });
-  }
+if (highestRatedToggle.checked) {
+  // Global average across all professors
+  const allRatings = filtered.flatMap(p => (p.reviews || []).map(r => r.rating).filter(r => r != null));
+  const globalAvg = allRatings.length ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : 3;
+  const weight = 5; // how many "phantom" reviews to add pulling toward global avg
+
+  filtered.sort((a, b) => {
+    const aRatings = (a.reviews || []).map(r => r.rating).filter(r => r != null);
+    const bRatings = (b.reviews || []).map(r => r.rating).filter(r => r != null);
+
+    const aScore = (aRatings.reduce((x, y) => x + y, 0) + weight * globalAvg) / (aRatings.length + weight);
+    const bScore = (bRatings.reduce((x, y) => x + y, 0) + weight * globalAvg) / (bRatings.length + weight);
+
+    return bScore - aScore;
+  });
+}
   renderAllProfessors(filtered);
 }
 departmentFilter.addEventListener("change", applyProfessorFilters);
@@ -211,7 +218,7 @@ async function loadReviews(profId, sort = "recent", targetDiv = reviewsDiv) {
   if (!profId) return;
   const { data: reviewsData, error } = await supabaseClient
     .from("reviews")
-    .select(`id, user_id, rating, comment, course, would_take_again, created_at, review_votes(vote, user_id)`)
+    .select(`id, user_id, rating, comment, course, would_take_again, created_at, review_votes(id, vote, user_id)`)
     .eq("professor_id", profId);
   if (error) {
     targetDiv.innerHTML = `<p class="text-red-500">Failed to load reviews: ${error.message}</p>`;
@@ -449,26 +456,99 @@ async function submitVote(reviewId,newVote,netVoteEl,upBtn,downBtn){
     .upsert({review_id:reviewId,user_id:userId,vote:newVote},{onConflict:["review_id","user_id"]});
   if(error) return alert("Failed to vote: "+error.message);
 
-  // update UI locally
-  let upvotes=parseInt(upBtn.dataset.count||"0");
-  let downvotes=parseInt(downBtn.dataset.count||"0");
-  let currentVote=parseInt(netVoteEl.dataset.userVote||"0");
+  await loadReviews(selectedProfId);
+}
+// ------------------------
+// Recent Reviews Sidebar
+// ------------------------
+async function loadRecentReviews() {
+  let limit = 5;
+  const desktopContainer = document.getElementById("recentReviewsList");
+  const mobileContainer = document.getElementById("recentReviewsListMobile");
 
-  if(currentVote===1) upvotes--;
-  if(currentVote===-1) downvotes--;
-  if(newVote===1) upvotes++;
-  if(newVote===-1) downvotes++;
+function buildReviewCard(r) {
+    const div = document.createElement("div");
+    div.className = "p-3 bg-white border rounded-lg shadow-sm text-sm cursor-pointer hover:bg-gray-50 transition";
+    div.innerHTML = `
+      <p class="font-semibold">${r.professors?.name || "Unknown"}</p>
+      <p class="text-gray-500 text-xs mb-1">${new Date(r.created_at).toLocaleDateString()}</p>
+      <p class="text-gray-700 line-clamp-3">${r.comment}</p>
+      ${r.rating ? `<p class="text-xs mt-1 text-blue-600 font-medium">${r.rating}/5</p>` : ""}
+    `;
 
-  const net=upvotes-downvotes;
-  netVoteEl.textContent=net;
-  upBtn.dataset.count=upvotes;
-  downBtn.dataset.count=downvotes;
-  netVoteEl.dataset.userVote=newVote;
+div.addEventListener("click", () => {
+  const profItems = document.querySelectorAll("#allProfessorsList li");
+  for (const li of profItems) {
+    const nameEl = li.querySelector("p.font-semibold");
+    if (nameEl?.textContent.trim() === r.professors?.name?.trim()) {
+      // scroll to the professor
+      li.scrollIntoView({ behavior: "smooth", block: "center" });
+      // wait for scroll then click to open their dropdown
+      setTimeout(() => {
+        li.click();
+        // scroll again after dropdown opens so review section is visible
+        setTimeout(() => li.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+      }, 400);
+      break;
+    }
+  }
+});
 
-  upBtn.className=newVote===1?"bg-green-600 text-white px-1 rounded":"border border-green-600 text-green-600 px-1 rounded";
-  downBtn.className=newVote===-1?"bg-red-600 text-white px-1 rounded":"border border-red-600 text-red-600 px-1 rounded";
+    return div;
+  }
+
+  async function fetchAndRender() {
+    const { data, error } = await supabaseClient
+      .from("reviews")
+      .select(`id, comment, rating, created_at, professor_id, professors(name)`)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) return console.error("Failed to load recent reviews:", error);
+
+    [desktopContainer, mobileContainer].forEach(container => {
+      if (!container) return;
+      container.innerHTML = "";
+
+      data.forEach(r => container.appendChild(buildReviewCard(r)));
+
+      const showMoreBtn = document.createElement("button");
+      showMoreBtn.textContent = "Show more";
+      showMoreBtn.className = "text-blue-500 text-sm hover:underline mt-2 w-full text-center";
+      showMoreBtn.addEventListener("click", () => { limit += 5; fetchAndRender(); });
+      container.appendChild(showMoreBtn);
+    });
+  }
+
+  await fetchAndRender();
 }
 
+// ------------------------
+// Request a Professor
+// ------------------------
+function initProfessorRequest() {
+  async function handleRequest(nameId, deptId, confirmId) {
+    const name = document.getElementById(nameId)?.value.trim();
+    const dept = document.getElementById(deptId)?.value.trim();
+    if (!name) return alert("Please enter a professor name.");
+
+    const { error } = await supabaseClient
+      .from("professor_requests")
+      .insert([{ name, department: dept || null }]);
+
+    if (error) return alert("Failed to submit request: " + error.message);
+
+    document.getElementById(nameId).value = "";
+    document.getElementById(deptId).value = "";
+    document.getElementById(confirmId).classList.remove("hidden");
+  }
+
+  document.getElementById("requestProfBtn")
+    ?.addEventListener("click", () => handleRequest("requestProfName", "requestProfDept", "requestConfirmation"));
+
+  document.getElementById("requestProfBtnMobile")
+    ?.addEventListener("click", () => handleRequest("requestProfNameMobile", "requestProfDeptMobile", "requestConfirmationMobile"));
+}
 // ------------------------
 // Initialize
 // ------------------------
@@ -476,6 +556,8 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   await protectPage();
   await loadNavbarUser();
   await loadAllProfessorsWithStats();
+  await loadRecentReviews();
+  initProfessorRequest();
   submitBtn.addEventListener("click", submitReviewHandler);
 
   const sortDropdown = document.getElementById("sortReviews");
@@ -501,6 +583,7 @@ sortDropdown.addEventListener("change", async () => {
 
 
   
+
 
 
 
