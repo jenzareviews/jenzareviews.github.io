@@ -332,7 +332,7 @@ async function loadReviews(profId, sort = "recent", targetDiv = reviewsDiv) {
     reviewEl.className = "p-4 border rounded-lg bg-white shadow-sm mb-4 relative";
 
     const dateEl = document.createElement("p");
-    dateEl.className = "absolute top-2 right-2 text-xs text-gray-400";
+    dateEl.className = "absolute bottom-2 right-2 text-xs text-gray-400";
     dateEl.textContent = new Date(r.created_at).toLocaleString();
     reviewEl.appendChild(dateEl);
 
@@ -583,6 +583,7 @@ sortDropdown.addEventListener("change", async () => {
 
 
   
+
 
 
 
